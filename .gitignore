@@ -4,3 +4,6 @@ node_modules/
 .env.*
 coverage/
 test-results/
+
+.wrangler/
+backend/.dev.vars

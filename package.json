@@ -1,9 +1,15 @@
 {
   "name": "tagspin",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "A little serendipity, one image tag at a time.",
-  "scripts": { "start": "node server.mjs", "test": "node --test", "check": "node --check app.js && node --check core.js && node --test" },
-  "engines": { "node": ">=22" }
+  "description": "A minimal roulette for web image searches.",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "test": "node --test",
+    "check": "node --check app.js && node --check core.js && node --check backend/search.js && node --check backend/worker.js && node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

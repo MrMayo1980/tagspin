@@ -8,16 +8,16 @@ const response = data => ({ ok: true, json: async () => data });
 const storage = () => { const map = new Map(); return { getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value) }; };
 
 test('website accepts domains and full URLs, rejects credentials and script URLs', () => {
-  assert.equal(normalizeWebsite(' https://www.NASA.gov/images?q=moon '), 'nasa.gov');
-  assert.equal(normalizeWebsite('commons.wikimedia.org'), 'commons.wikimedia.org');
+  assert.equal(normalizeWebsite(' https://www.Example.com/images?q=cats '), 'example.com');
+  assert.equal(normalizeWebsite('images.example.com'), 'images.example.com');
   assert.equal(normalizeWebsite(''), '');
-  for (const bad of ['javascript:alert(1)', 'https://name:secret@nasa.gov', 'localhost', 'https://example.com:444', 'not a website', 'https://-example.com']) assert.throws(() => normalizeWebsite(bad));
+  for (const bad of ['javascript:alert(1)', 'https://name:secret@example.com', 'localhost', 'https://example.com:444', 'not a website', 'https://-example.com']) assert.throws(() => normalizeWebsite(bad));
 });
 test('source filter accepts genuine subdomains, rejects lookalikes', () => {
-  assert.ok(domainMatches('https://images.nasa.gov/moon', 'nasa.gov'));
-  assert.ok(domainMatches('https://www.flickr.com/photos/a', 'flickr.com'));
-  assert.ok(!domainMatches('https://flickr.com.evil.example/pic', 'flickr.com'));
-  assert.ok(!domainMatches('https://notflickr.com/pic', 'flickr.com'));
+  assert.ok(domainMatches('https://images.example.com/cat', 'example.com'));
+  assert.ok(domainMatches('https://www.example.org/photos/a', 'example.org'));
+  assert.ok(!domainMatches('https://example.org.evil.example/pic', 'example.org'));
+  assert.ok(!domainMatches('https://notexample.org/pic', 'example.org'));
 });
 test('settings reject empty tags, non-integer counts and unsupported categories', () => {
   assert.deepEqual(validateSettings({ ...settings, tag: ' #cats ', count: '10' }), { ...settings, tag: 'cats', count: 10 });
@@ -25,7 +25,7 @@ test('settings reject empty tags, non-integer counts and unsupported categories'
   assert.throws(() => validateSettings({ ...settings, tag: '  ' }));
   assert.throws(() => validateSettings({ ...settings, kind: 'video' }));
 });
-test('only HTTPS external media and source links are accepted', () => {
+test('external links reject scripts, data URLs, and embedded credentials', () => {
   assert.equal(safeUrl('javascript:alert(1)'), '');
   assert.equal(safeUrl('data:text/html,hello'), '');
   assert.equal(safeUrl('https://secret@example.org/image.jpg'), '');
@@ -42,54 +42,38 @@ test('history survives serialization, enforces cap, ignores corrupt entries', ()
   store.setItem(HISTORY_KEY, 'broken JSON'); assert.deepEqual(readHistory(store), []);
   store.setItem(HISTORY_KEY, '{}'); assert.deepEqual(readHistory(store), []);
 });
-test('Wikimedia search returns requested unique images and safe, plain-text attribution', async () => {
+test('search uses one general search endpoint and respects the requested pool size', async () => {
   let called;
-  const pages = Object.fromEntries(Array.from({ length: 5 }, (_, i) => [i, { pageid: i, index: i, title: `File:Cat ${i}`, imageinfo: [{ thumburl: `https://example.org/${i}.jpg`, url: `https://example.org/orig${i}.jpg`, descriptionurl: `https://commons.wikimedia.org/wiki/File:Cat${i}`, extmetadata: { Artist: { value: '<a href="evil">Creator &amp; friend</a>' } } }] }]));
-  const images = await searchImages(settings, { fetcher: async url => { called = new URL(url); return response({ query: { pages } }); } });
-  assert.equal(called.hostname, 'commons.wikimedia.org');
-  assert.equal(called.searchParams.get('origin'), '*');
-  assert.equal(images.length, 3); assert.equal(new Set(images.map(i => i.id)).size, 3);
-  assert.equal(images[0].creator, 'Creator & friend');
+  const images = Array.from({ length: 8 }, (_, index) => ({ ...photo, id: String(index), url: `https://site${index}.org/cat.jpg`, page: `https://site${index}.org/cat` }));
+  const found = await searchImages(settings, { endpoint: 'https://search.example.com/api/images', fetcher: async url => { called = new URL(url); return response({ images }); } });
+  assert.equal(called.hostname, 'search.example.com'); assert.equal(called.searchParams.get('tag'), 'cats');
+  assert.equal(called.searchParams.get('website'), ''); assert.equal(found.length, 3);
+  assert.equal(new Set(found.map(image => image.page)).size, 3);
 });
-test('NASA website selects NASA API, respects count and preserves credits', async () => {
-  let called;
-  const items = Array.from({ length: 8 }, (_, i) => ({ data: [{ nasa_id: String(i), title: `Moon ${i}`, photographer: 'NASA photographer' }], links: [{ rel: 'preview', href: `https://images-assets.nasa.gov/${i}.jpg` }] }));
-  const images = await searchImages({ ...settings, tag: 'moon', website: 'nasa.gov', kind: 'illustration' }, { fetcher: async url => { called = new URL(url); return response({ collection: { items } }); } });
-  assert.equal(called.hostname, 'images-api.nasa.gov'); assert.equal(called.searchParams.get('q'), 'moon illustration');
-  assert.equal(images.length, 3); assert.equal(images[0].creator, 'NASA photographer'); assert.match(images[0].page, /^https:\/\/images.nasa.gov\/details\//);
+test('optional websites filter general results by actual page or image domain', async () => {
+  const images = [photo, { ...photo, id: '2', url: 'https://cdn.example.org/b.jpg', page: 'https://www.example.org/b' }, { ...photo, id: 'bad', url: 'https://example.org.evil.com/a.jpg', page: 'https://evil.com/a' }];
+  const found = await searchImages({ ...settings, website: 'example.org' }, { endpoint: './api/images', fetcher: async () => response({ images }) });
+  assert.equal(found.length, 2); assert.ok(found.every(image => domainMatches(image.page, 'example.org')));
 });
-test('Flickr uses its public feed, cleans creator names, and matches the source', async () => {
-  let usedTags;
-  const images = await searchImages({ ...settings, website: 'flickr.com' }, { feedFetcher: async tags => {
-    usedTags = tags;
-    return { items: Array.from({ length: 5 }, (_, i) => ({ title: `Cat ${i}`, link: `https://www.flickr.com/photos/person/${i}`, media: { m: `https://live.staticflickr.com/${i}.jpg` }, author: 'nobody@flickr.com ("Photographer")' })) };
-  } });
-  assert.equal(usedTags, 'cats'); assert.equal(images.length, 3); assert.equal(images[0].creator, 'Photographer');
-  assert.equal(images[0].source, 'Flickr');
+test('search removes unsafe and duplicate results', async () => {
+  const images = [photo, photo, { ...photo, page: 'javascript:alert(1)' }, { ...photo, id: '2', url: 'https://example.org/other.jpg' }];
+  const found = await searchImages(settings, { endpoint: './api/images', fetcher: async () => response({ images }) });
+  assert.equal(found.length, 2);
 });
-test('Openverse follows pages, filters actual domain, and de-duplicates results', async () => {
-  const calls = [];
-  const item = id => ({ id, title: `Cat ${id}`, thumbnail: `https://images.metmuseum.org/${id}.jpg`, url: `https://images.metmuseum.org/original${id}.jpg`, foreign_landing_url: `https://www.metmuseum.org/art/${id}`, license: 'by', license_version: '4.0', source: 'met' });
-  const images = await searchImages({ ...settings, website: 'metmuseum.org' }, { fetcher: async url => {
-    const parsed = new URL(url); calls.push(parsed);
-    return response({ page_count: 2, results: parsed.searchParams.get('page') === '1' ? [item('1'), { ...item('bad'), foreign_landing_url: 'https://metmuseum.org.evil.example/a', url: 'https://unrelated.org/a.jpg' }, item('1')] : [item('2'), item('3')] });
-  } });
-  assert.equal(calls.length, 2); assert.equal(calls[0].searchParams.get('source'), 'met'); assert.equal(images.length, 3);
-  assert.ok(images.every(image => domainMatches(image.page, 'metmuseum.org')));
+test('no search is attempted until an endpoint is configured', async () => {
+  let requested = false;
+  await assert.rejects(searchImages(settings, { fetcher: async () => { requested = true; } }), /not connected/);
+  await assert.rejects(searchImages(settings, { endpoint: 'http://untrusted.example/api' }), /invalid/);
+  assert.equal(requested, false);
 });
-test('unindexed website has a bounded search and returns a helpful error', async () => {
-  let calls = 0;
-  await assert.rejects(searchImages({ ...settings, website: 'example.org' }, { fetcher: async () => { calls++; return response({ page_count: 100, results: [{ id: String(calls), foreign_landing_url: 'https://unrelated.org/x', url: 'https://unrelated.org/x.jpg' }] }); } }), /no images/);
-  assert.equal(calls, 5);
+test('empty and malformed search responses produce recoverable errors', async () => {
+  for (const images of [[], [photo]]) await assert.rejects(searchImages(settings, { endpoint: './api/images', fetcher: async () => response({ images }) }), /Not enough images/);
+  await assert.rejects(searchImages(settings, { endpoint: './api/images', fetcher: async () => response({}) }), /unreadable/);
 });
-test('empty search and one-image results cannot start an invalid roulette', async () => {
-  await assert.rejects(searchImages(settings, { fetcher: async () => response({}) }), /no images/);
-  await assert.rejects(searchImages({ ...settings, website: 'nasa.gov' }, { fetcher: async () => response({ collection: { items: [{ data: [{ nasa_id: 'one' }], links: [{ rel: 'preview', href: 'https://images-assets.nasa.gov/a.jpg' }] }] } }) }), /only one image/);
-});
-test('rate limits, network errors and cancellation produce actionable behavior', async () => {
+test('rate limits, network failures, malformed JSON, and cancellation are handled', async () => {
   await assert.rejects(fetchJson('https://example.org', { fetcher: async () => ({ ok: false, status: 429 }) }), /wait a minute/);
   await assert.rejects(fetchJson('https://example.org', { fetcher: async () => { throw new Error('network'); } }), /isn’t responding/);
-  await assert.rejects(fetchJson('https://example.org', { fetcher: async () => ({ ok: true, json: async () => { throw new SyntaxError('bad JSON'); } }) }), /unreadable response/);
+  await assert.rejects(fetchJson('https://example.org', { fetcher: async () => ({ ok: true, json: async () => { throw new SyntaxError('bad JSON'); } }) }), /unreadable/);
   const controller = new AbortController(); controller.abort();
   await assert.rejects(fetchJson('https://example.org', { signal: controller.signal, fetcher: async (_, options) => { options.signal.throwIfAborted(); } }), { name: 'AbortError' });
 });

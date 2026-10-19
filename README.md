@@ -1,40 +1,23 @@
 # Tagspin
 
-A little serendipity, one image tag at a time. A responsive image roulette with an animated reel, real image search, creator attribution, and history saved in your browser.
+A minimal web image roulette: a search phrase, image count, optional website, Spin, and browser-saved history.
 
-## Use
+The simplified version replaces all source-specific APIs with **Google Images search through SerpAPI**. Without a website it searches across the web. A website adds a `site:example.com` filter and results are checked against that domain. No search engine indexes literally every image, and unavailable images are skipped.
 
-Enter a tag, choose an image type and a pool of 2–50 images, optionally specify a website, then give it a spin. Spin the same collection again without another search. Open any image to see its original source and license. The History tab keeps the last 100 winners, supports JSON export, and can restore the settings of a previous discovery.
+## Current status
 
-## Sources and limitations
+The interface and general-search integration are prepared on `simplify-web-search`. A SerpAPI account/key and hosted search backend must be connected before publishing this revision. The existing GitHub Pages site remains on `main` until live web-search verification passes. The application does not fall back to the old source-specific searches.
 
-- No website: Wikimedia Commons. `wikimedia.org`, `commons.wikimedia.org`, and `wikipedia.org` select Commons.
-- `nasa.gov` or `images.nasa.gov`: NASA Images API.
-- `flickr.com`: Flickr's direct public JSONP feed, with up to 20 recent matching images. No API key is needed. The feed does not include license details, so each image links to its Flickr page for usage terms.
-- Other websites: Openverse, with strict matching of the original page or original image hostname, including subdomains. Known providers such as Flickr are also filtered at the API. Up to five pages of 20 results are searched. Websites absent from the index may have no matches. This is an indexed search, not a general website crawler.
-- Wikimedia and NASA refine image type with a search keyword, Flickr adds an extra tag, and Openverse uses its image category filter.
-- If fewer images match or load than requested, the site reports the actual pool size. A spin requires at least two successfully loaded images.
-- Third-party APIs and images require an internet connection. Rate limits, network failures, blocked hotlinks, and unavailable websites show recoverable errors. The Openverse service could not be reached from the development environment; its integration is covered with API-response tests, and live availability depends on the service.
-- Each image links to its source and available license. Check the source's terms before reuse. The welcome collage embeds Unsplash images.
+## Private setup
 
-Search terms go directly from the browser to the selected provider. There is no backend, login, API key, analytics, or tracking service. History is local to the current browser and origin; clearing browser storage removes it. Export creates a JSON backup. If storage is blocked or full, history lasts only for the current visit and the site displays a notice.
+1. Create a free SerpAPI account: <https://serpapi.com/users/sign_up?plan=free>.
+2. Get the key from <https://serpapi.com/manage-api-key>.
+3. For local testing, paste the value after `SERPAPI_API_KEY=` in the ignored `.env` file. Never put the value in `config.json`, client code, a commit, or a chat message.
+4. Run `npm start` using Node.js 22 or newer. Visit <http://127.0.0.1:4387>.
+5. For public hosting, deploy `backend/worker.js` as a Worker with the `SERPAPI_API_KEY` secret and `ALLOWED_ORIGIN=https://mrmayo1980.github.io`. Set the non-secret `searchEndpoint` in `config.json` to `https://YOUR-BACKEND/api/images`. Keep the frontend on GitHub Pages.
 
-## Run locally
+The server-side API key is sent only to SerpAPI. The browser receives normalized image results, never provider credentials or raw error responses. Search inputs go to the search provider. History remains in browser storage, and existing v1 history is preserved.
 
-Requires Node.js 22 or newer. No dependencies or build step.
+Run checks with `npm run check`. The backend uses the platform Fetch API and can run in a Cloudflare Worker; `server.mjs` provides the same route for local development. No npm dependencies or frontend build are required.
 
-```sh
-npm start
-```
-
-Open `http://127.0.0.1:4387`. Run validation with:
-
-```sh
-npm run check
-```
-
-Tests cover settings and URL validation, provider selection, parsing and attribution, domain filtering and pagination, unique image pools, history persistence and corrupted data, zero/one result searches, rate limits, cancellation, and network errors. Browser checks are recorded in `QA.md`.
-
-## GitHub Pages
-
-The site uses relative asset paths and works under a repository subpath. Publish the `main` branch from `/ (root)` in repository Settings → Pages. `.nojekyll` disables Jekyll processing. `.github/workflows/checks.yml` runs validation on pushes and pull requests.
+Image results link to their original source. General search results are not necessarily licensed for reuse; check the original page.
