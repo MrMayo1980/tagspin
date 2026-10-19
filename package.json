@@ -1,0 +1,9 @@
+{
+  "name": "tagspin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A little serendipity, one image tag at a time.",
+  "scripts": { "start": "node server.mjs", "test": "node --test", "check": "node --check app.js && node --check core.js && node --test" },
+  "engines": { "node": ">=22" }
+}

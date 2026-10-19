@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#174c3c">
+  <meta name="description" content="Pick a tag, give it a spin, and discover something unexpected. A free image roulette with your own discovery history.">
+  <title>Tagspin — Let curiosity take a turn.</title>
+  <link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="site-shell">
+    <header class="header">
+      <a class="brand" href="./" aria-label="Tagspin home"><img src="./assets/mark.svg" width="34" height="34" alt="">tagspin</a>
+      <nav aria-label="Main navigation">
+        <button class="nav-item active" id="discover-tab" aria-current="page">Discover <span>↗</span></button>
+        <button class="nav-item" id="history-tab">History <span class="history-count" id="history-count">0</span></button>
+      </nav>
+      <span class="header-note"><span class="live-dot"></span> A little less scrolling. A little more surprise.</span>
+    </header>
+    <main id="main">
+      <section id="discover-view">
+        <div class="intro">
+          <div><p class="eyebrow"><span class="tiny-star">✳</span> THE INTERNET HAS GOOD SURPRISES, TOO.</p>
+          <h1>Let curiosity<br>take a <span class="serif">turn.</span><svg class="hero-spark" viewBox="0 0 80 80" aria-hidden="true"><path d="M40 5v70M5 40h70M15 15l50 50M15 65l50-50"/></svg></h1></div>
+          <p class="intro-copy">One tag. A world of possibilities.<br>Build your image roulette and let<br>a little serendipity do its thing.</p>
+        </div>
+        <div class="playground">
+          <form class="setup-card" id="spin-form">
+            <div class="card-heading"><span class="step-number">01</span><h2>Set your curiosity</h2><span class="small-star">✳</span></div>
+            <label for="tag">What are you into?</label>
+            <div class="input-wrap"><span aria-hidden="true">#</span><input id="tag" name="tag" placeholder="cats, wildflowers, outer space…" required maxlength="100" autocomplete="off" value="cats"></div>
+            <div class="suggestions" aria-label="Try a tag"><span>Try</span><button type="button" data-tag="cats">cats</button><button type="button" data-tag="ocean">ocean</button><button type="button" data-tag="architecture">architecture</button></div>
+            <div class="field-row"><div><label for="kind">A little more specific</label><select id="kind" name="kind"><option value="all">All images</option><option value="photograph">Photography</option><option value="illustration">Illustrations</option></select></div><div><label for="count">Images in your roulette</label><div class="number-input"><button type="button" id="decrease" aria-label="Fewer images">−</button><input id="count" name="count" type="number" value="10" min="2" max="50" required aria-label="Number of images"><button type="button" id="increase" aria-label="More images">+</button></div></div></div>
+            <label for="website">From a particular corner of the web? <span class="optional">Optional</span></label>
+            <div class="input-wrap website-input"><span aria-hidden="true">↗</span><input id="website" name="website" placeholder="e.g. nasa.gov" maxlength="200" aria-describedby="source-help"></div>
+            <p class="field-help" id="source-help">Leave blank for Wikimedia. Try nasa.gov or flickr.com. Other websites use Openverse’s index.</p>
+            <button class="spin-button" type="submit" id="spin-button"><span id="spin-label">Give it a spin</span><span class="spin-icon" aria-hidden="true">↗</span></button>
+            <p class="form-footnote">No account. Just curiosity.</p>
+          </form>
+          <section class="roulette-card" aria-label="Image roulette" aria-busy="false" id="roulette-card">
+            <div class="roulette-top"><span class="pill"><span class="live-dot"></span> OPEN TO THE UNEXPECTED</span><span class="edition">YOUR DAILY DOSE OF DISCOVERY</span></div>
+            <div id="inspiration" class="inspiration">
+              <svg class="doodle-arrow" viewBox="0 0 180 100" aria-hidden="true"><path d="M10 15C80 0 160 50 100 65C50 80 65 20 150 70M130 67l23 5-7-22"/></svg>
+              <div class="photo-stack"><figure class="sample-photo sample-back"><img src="https://images.unsplash.com/photo-1472396961693-142e6e269027?w=500&auto=format&fit=crop&q=80" alt="Deer standing in a sunlit forest"><figcaption>the unexpected</figcaption></figure><figure class="sample-photo sample-middle"><img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=500&auto=format&fit=crop&q=80" alt="A dramatic mountain peak"><figcaption>a different perspective</figcaption></figure><figure class="sample-photo sample-front"><img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&auto=format&fit=crop&q=85" alt="A curious cat"><figcaption><span># a little wonder</span><span>✳</span></figcaption></figure></div>
+              <div class="inspiration-caption"><span class="handwritten">Your next rabbit hole awaits.</span><p>Pick a tag on the left. We’ll take it from there.</p></div>
+              <span class="floating-spark" aria-hidden="true">✳</span>
+            </div>
+            <div id="spin-stage" class="spin-stage" hidden><div class="stage-heading"><span id="stage-kicker">FINDING YOUR NEXT FAVORITE</span><h2 id="stage-title">A little wonder is on its way.</h2></div><div class="reel-window" id="reel-window"><div class="reel" id="reel"></div><span class="reel-marker" aria-hidden="true"></span></div><div id="winner-info" class="winner-info"></div><button type="button" class="secondary-button" id="spin-again" hidden>↻ &nbsp; Spin this collection again</button></div>
+            <div class="roulette-bottom"><span>LESS ALGORITHM, MORE HAPPY ACCIDENT.</span><span aria-hidden="true">✦ &nbsp; ✦ &nbsp; ✦</span></div>
+          </section>
+        </div>
+        <div id="status" role="status" aria-live="polite" class="status" hidden></div>
+        <section id="collection-section" class="collection-section" hidden><div class="section-heading"><div><p class="eyebrow">THE WHOLE HAPPY ACCIDENT</p><h2>Your collection <span id="collection-count"></span></h2></div><span id="collection-tag" class="collection-tag"></span></div><div id="collection-grid" class="image-grid"></div></section>
+        <section class="how-it-works" aria-label="How it works"><div class="how-intro"><span class="tiny-star">✳</span><p>A small ritual<br>for a curious mind.</p></div><div class="how-step"><span>01 /</span><div><h3>Follow an interest</h3><p>A subject, a mood, a very specific obsession.</p></div></div><div class="how-step"><span>02 /</span><div><h3>Let it spin</h3><p>We find the images. Chance picks your favorite.</p></div></div><div class="how-step"><span>03 /</span><div><h3>Keep the good stuff</h3><p>Every discovery, saved in your local history.</p></div></div></section>
+      </section>
+      <section id="history-view" hidden><div class="history-heading"><div><p class="eyebrow">YOUR TRAIL OF HAPPY ACCIDENTS</p><h1>A little <span class="serif">history.</span></h1><p>All the places your curiosity has taken you. Saved on this device.</p></div><div class="history-tools"><button class="secondary-button" id="export-history">Export history ↓</button><button class="text-button" id="clear-history">Clear history</button></div></div><div id="history-grid" class="image-grid history-grid"></div><div id="history-empty" class="empty-history"><span>✳</span><h2>Your story starts with a spin.</h2><p>Discover something you didn’t know you were looking for.</p><button class="secondary-button" id="start-discovering">Let’s discover ↗</button></div></section>
+    </main>
+    <footer><a class="footer-brand" href="./">✳ tagspin</a><span>Made for the joy of stumbling upon something.</span><button class="text-button" id="about-button">About & sources ↗</button></footer>
+  </div>
+  <dialog id="image-dialog"><button class="dialog-close" aria-label="Close image">×</button><div id="image-detail"></div></dialog>
+  <dialog id="about-dialog"><button class="dialog-close" aria-label="Close about">×</button><p class="eyebrow">A SMALL NOTE ON DISCOVERY</p><h2>Good surprises. Real sources.</h2><p>Tagspin searches Wikimedia Commons by default, NASA’s image library for nasa.gov, Flickr’s public feed for flickr.com, and Openverse for other websites. Website filters match the image’s original page or image host in Openverse’s index; they don’t crawl an entire website. Availability and the number of matches depend on the source.</p><p>Your tag and source are sent to the search provider. Your spin history stays in this browser. Clearing browser data removes it; export a copy to keep it.</p><p>Images belong to their creators. Open an image to find its source and license before reusing it. The welcome collage uses photos from Unsplash.</p><div class="about-links"><a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer">Wikimedia ↗</a><a href="https://images.nasa.gov" target="_blank" rel="noopener noreferrer">NASA ↗</a><a href="https://openverse.org" target="_blank" rel="noopener noreferrer">Openverse ↗</a></div></dialog>
+  <dialog id="clear-dialog"><button class="dialog-close" aria-label="Cancel clearing history">×</button><h2>Clear your discovery history?</h2><p>This removes saved spins from this browser. You can export your history first.</p><div class="dialog-actions"><button class="secondary-button" id="cancel-clear">Keep my history</button><button class="spin-button" id="confirm-clear">Clear history</button></div></dialog>
+</body>
+</html>
