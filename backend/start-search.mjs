@@ -45,7 +45,7 @@ if (command(['container', 'exists', 'tagspin-searxng'], true).status !== 0) {
 } else command(['start', 'tagspin-searxng']);
 await waitFor(async () => (await fetch('http://127.0.0.1:4388/config', { signal: AbortSignal.timeout(1500) })).ok);
 if (!running('search-api', join(root, 'backend/server.mjs'))) launch('search-api', process.execPath, [join(root, 'backend/server.mjs')]);
-await waitFor(async () => (await fetch('http://127.0.0.1:4389/', { signal: AbortSignal.timeout(1500) })).status === 404);
+await waitFor(async () => (await fetch('http://127.0.0.1:4389/health', { signal: AbortSignal.timeout(1500) })).status === 200);
 const localBinary = join(homedir(), '.local/bin/tagspin-cloudflared');
 const tunnel = process.env.CLOUDFLARED_BIN || (existsSync(localBinary) ? localBinary : 'cloudflared');
 if (!running('search-tunnel', '127.0.0.1:4389')) launch('search-tunnel', tunnel, ['tunnel', '--url', 'http://127.0.0.1:4389', '--no-autoupdate', '--protocol', 'http2']);

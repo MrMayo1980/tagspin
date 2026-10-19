@@ -6,11 +6,13 @@ A minimal image roulette: search phrase, image count, optional website, Spin, an
 
 A self-hosted SearXNG instance gathers general image results from Bing Images, Brave Images, and DuckDuckGo Images when each engine is available. There are no direct Wikimedia, NASA, Flickr, or other catalog adapters. Results can come from any website indexed by the working search engines. An optional website adds a `site:example.com` query and client-side domain matching.
 
-The small Node API returns image URLs and source pages, caches successful searches for five minutes, and limits repeated requests. The public tunnel exposes only the search API; it does not expose the project files or the SearXNG administration interface. Image usage rights remain with the original creators.
+The small Node API returns image URLs and source pages, caches successful searches for five minutes, and limits repeated requests. The public tunnel exposes only the search API and an explicit list of public frontend assets. It does not expose backend source files, private configuration, or the SearXNG administration interface. Image usage rights remain with the original creators.
 
 ## Public trial
 
-The frontend is published on GitHub Pages. `config.json` points to a Cloudflare Quick Tunnel connected to the search service on the owner's computer.
+Working trial: <https://interact-earth-picking-agricultural.trycloudflare.com/>
+
+The frontend is configured for GitHub Pages. `config.json` points to a Cloudflare Quick Tunnel connected to the search service on the owner's computer. The same tunnel also serves a working copy of the frontend while the GitHub Pages update is delayed. GitHub reported an Actions/Pages incident during publication on 19 October 2026.
 
 **This is a working trial, not always-on hosting. Search is available only while the owner's computer, SearXNG container, Node API and tunnel are running.** Cloudflare Quick Tunnels have no uptime guarantee. Restarting the tunnel can change its URL; republish the updated `config.json` afterward. For permanent availability, move the same search services to an always-on host and use a stable HTTPS endpoint.
 

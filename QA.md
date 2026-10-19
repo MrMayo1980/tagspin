@@ -17,6 +17,10 @@ Checked on 19 October 2026.
 - An optional `pexels.com` filter completed a roulette with a pool of 4 and linked back to that domain.
 - The live mobile layout at 390 × 844 loaded the image and had no horizontal overflow.
 
+## Publication
+
+The tested revision is pushed to GitHub. An official GitHub Actions/Pages incident delayed deployment; the same public tunnel serves a working trial of the complete frontend and API. The public trial completed a live `cats` roulette with 5 images, saved the winner, and retained it after a page reload. Only explicitly approved frontend assets are served; `.env`, backend source and package metadata return HTTP 404. GitHub Pages publication must be rechecked after the incident.
+
 ## Availability
 
 The search backend is a temporary trial running on the owner's computer. It requires that computer and its search processes to remain online. Quick Tunnel URLs can change on restart. Permanent always-on availability has not been established.
