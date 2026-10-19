@@ -1,4 +1,4 @@
-import { HISTORY_KEY, HISTORY_LIMIT, readHistory, saveHistory, validateSettings, searchImages, randomIndex } from './core.js';
+import { HISTORY_KEY, HISTORY_LIMIT, readHistory, saveHistory, validateSettings, searchImages, randomIndex } from './core.js?v=2.1.1';
 
 const $ = selector => document.querySelector(selector);
 const state = { pool: [], settings: null, history: [], busy: false, endpoint: '' };
