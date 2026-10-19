@@ -7,3 +7,5 @@ test-results/
 
 .wrangler/
 backend/.dev.vars
+
+.local/

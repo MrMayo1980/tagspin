@@ -1,23 +1,40 @@
 # Tagspin
 
-A minimal web image roulette: a search phrase, image count, optional website, Spin, and browser-saved history.
+A minimal image roulette: search phrase, image count, optional website, Spin, and browser-saved history. No visitor accounts, search API keys, or paid search subscriptions are required.
 
-The simplified version replaces all source-specific APIs with **Google Images search through SerpAPI**. Without a website it searches across the web. A website adds a `site:example.com` filter and results are checked against that domain. No search engine indexes literally every image, and unavailable images are skipped.
+## Search
 
-## Current status
+A self-hosted SearXNG instance gathers general image results from Bing Images, Brave Images, and DuckDuckGo Images when each engine is available. There are no direct Wikimedia, NASA, Flickr, or other catalog adapters. Results can come from any website indexed by the working search engines. An optional website adds a `site:example.com` query and client-side domain matching.
 
-The interface and general-search integration are prepared on `simplify-web-search`. A SerpAPI account/key and hosted search backend must be connected before publishing this revision. The existing GitHub Pages site remains on `main` until live web-search verification passes. The application does not fall back to the old source-specific searches.
+The small Node API returns image URLs and source pages, caches successful searches for five minutes, and limits repeated requests. The public tunnel exposes only the search API; it does not expose the project files or the SearXNG administration interface. Image usage rights remain with the original creators.
 
-## Private setup
+## Public trial
 
-1. Create a free SerpAPI account: <https://serpapi.com/users/sign_up?plan=free>.
-2. Get the key from <https://serpapi.com/manage-api-key>.
-3. For local testing, paste the value after `SERPAPI_API_KEY=` in the ignored `.env` file. Never put the value in `config.json`, client code, a commit, or a chat message.
-4. Run `npm start` using Node.js 22 or newer. Visit <http://127.0.0.1:4387>.
-5. For public hosting, deploy `backend/worker.js` as a Worker with the `SERPAPI_API_KEY` secret and `ALLOWED_ORIGIN=https://mrmayo1980.github.io`. Set the non-secret `searchEndpoint` in `config.json` to `https://YOUR-BACKEND/api/images`. Keep the frontend on GitHub Pages.
+The frontend is published on GitHub Pages. `config.json` points to a Cloudflare Quick Tunnel connected to the search service on the owner's computer.
 
-The server-side API key is sent only to SerpAPI. The browser receives normalized image results, never provider credentials or raw error responses. Search inputs go to the search provider. History remains in browser storage, and existing v1 history is preserved.
+**This is a working trial, not always-on hosting. Search is available only while the owner's computer, SearXNG container, Node API and tunnel are running.** Cloudflare Quick Tunnels have no uptime guarantee. Restarting the tunnel can change its URL; republish the updated `config.json` afterward. For permanent availability, move the same search services to an always-on host and use a stable HTTPS endpoint.
 
-Run checks with `npm run check`. The backend uses the platform Fetch API and can run in a Cloudflare Worker; `server.mjs` provides the same route for local development. No npm dependencies or frontend build are required.
+## Run
 
-Image results link to their original source. General search results are not necessarily licensed for reuse; check the original page.
+Requirements: Node.js 22+, Podman, and the official `cloudflared` binary. This checkout has the verified Cloudflare client at `~/.local/bin/tagspin-cloudflared`; other installations can set `CLOUDFLARED_BIN` or use `cloudflared` on PATH.
+
+```sh
+npm run start:search
+npm start
+```
+
+The first command starts the search components in the background and updates `config.json` with the trial endpoint. The frontend preview is at <http://127.0.0.1:4387>. Local preview calls the same search adapter directly. Stop the search service with:
+
+```sh
+npm run stop:search
+```
+
+SearXNG's exact tested container image is pinned in `backend/start-search.mjs`. Container configuration, generated internal session secrets, logs and process IDs stay in ignored `.local/`. There is no user-supplied API key. Earlier SerpAPI configuration is unused.
+
+Run all checks with `npm run check`. No npm dependency installation or frontend build is required. The existing v1 browser history is preserved and the newest 100 winners are retained.
+
+## References
+
+- SearXNG: <https://docs.searxng.org/>
+- Cloudflare Quick Tunnels: <https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/>
+- Source repository: <https://github.com/MrMayo1980/tagspin>

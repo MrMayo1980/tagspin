@@ -1,13 +1,15 @@
 {
   "name": "tagspin",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "description": "A minimal roulette for web image searches.",
   "scripts": {
-    "start": "node --env-file-if-exists=.env server.mjs",
+    "start": "node server.mjs",
     "test": "node --test",
-    "check": "node --check app.js && node --check core.js && node --check backend/search.js && node --check backend/worker.js && node --test"
+    "check": "node --check app.js && node --check core.js && node --check backend/search.js && node --check backend/worker.js && node --check backend/server.mjs && node --check backend/start-search.mjs && node --check backend/stop-search.mjs && node --test",
+    "start:search": "node backend/start-search.mjs",
+    "stop:search": "node backend/stop-search.mjs"
   },
   "engines": {
     "node": ">=22"

@@ -1,19 +1,22 @@
-# Verification — simplified general-search revision
+# Verification — no-key web search
 
-The previous source-specific release was verified and published on `main`. This revision is on `simplify-web-search` and has not replaced the live site.
+Checked on 19 October 2026.
 
-- All direct Wikimedia, NASA, Flickr and Openverse integrations have been removed from application search code.
-- A single server-side SerpAPI Google Images request is used for general web results. Website restrictions are opt-in `site:` queries with domain checks on returned results.
-- Automated checks cover validation, unconfigured search, result parsing, URL safety, domain filtering, duplicate elimination, count limits, old-history compatibility, provider failures, secret redaction, and backend request handling.
-- Live Google Images search is pending the owner's SerpAPI key. Fixture-driven tests do not establish a working live provider connection.
+## Automated
 
-## Browser checks
+18 passing tests cover input validation, safe image/source URLs, optional domain filtering, unique result pools, count limits, existing history compatibility, no-key SearXNG requests, image-result parsing, partial engine failures, empty results, network/rate-limit errors, malformed responses, and API origin/method handling. Application, backend, and lifecycle scripts pass syntax checks.
 
-- The simplified desktop page has only the search phrase, count, optional website, Spin, and history.
-- Existing browser history from the previous version is retained.
-- A separate test server clearly labeled “TEST PREVIEW · Sample images” was used to verify loading, image switching, winner selection, repeat spins, and history without pretending that fixture results came from live search.
-- Mobile layout at 390 × 844 has no horizontal overflow; inputs and controls remain usable.
-- Repeat spins append history and the entries survive a reload.
-- The unconfigured search server shows a recoverable error; no restricted source is used as a fallback.
+## Live checks
 
-Live provider search and the revised GitHub Pages deployment remain pending the owner's API key and backend connection.
+- Three public SearXNG instances rejected automated requests (HTTP 429). They are not used by the application.
+- A dedicated local SearXNG container returned hundreds of image results. It is restricted to the general engines Bing, Brave, and DuckDuckGo plus their image engines; unavailable engines do not prevent results from working engines.
+- The Node API returned 100 normalized image results for `cats` and for `ocean` with no search API credentials.
+- A public Cloudflare Quick Tunnel returned HTTP 200 and the expected GitHub Pages CORS response for a real image search.
+- The lifecycle launcher successfully started detached API/tunnel processes and wrote the public endpoint to `config.json`.
+- The simplified browser interface completed a real `cats` roulette with a pool of 5, displayed a source link, and appended saved history.
+- An optional `pexels.com` filter completed a roulette with a pool of 4 and linked back to that domain.
+- The live mobile layout at 390 × 844 loaded the image and had no horizontal overflow.
+
+## Availability
+
+The search backend is a temporary trial running on the owner's computer. It requires that computer and its search processes to remain online. Quick Tunnel URLs can change on restart. Permanent always-on availability has not been established.

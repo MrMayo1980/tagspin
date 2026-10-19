@@ -1,8 +1,0 @@
-{
-  "name": "tagspin-search",
-  "main": "worker.js",
-  "compatibility_date": "2026-10-19",
-  "vars": {
-    "ALLOWED_ORIGIN": "https://mrmayo1980.github.io"
-  }
-}

@@ -3,43 +3,42 @@ import assert from 'node:assert/strict';
 import { buildQuery, parseResults, webImageSearch } from '../backend/search.js';
 import worker from '../backend/worker.js';
 const input = { tag: 'cats', count: 10, website: '' };
-const item = { title: 'A cat', original: 'https://any-site.org/cat.jpg', thumbnail: 'https://search-images.org/cat.jpg', link: 'https://any-site.org/cat', source: 'Any site' };
+const item = { title: 'A cat', img_src: 'https://any-site.org/cat.jpg', thumbnail_src: 'https://search-images.org/cat.jpg', url: 'https://any-site.org/cat', source: 'Any site', category: 'images' };
 
 test('general search is unrestricted unless a website is explicitly supplied', () => {
   assert.equal(buildQuery(input), 'cats');
   assert.equal(buildQuery({ ...input, website: 'example.com' }), 'cats site:example.com');
 });
-test('Google Images results retain original sites and accept HTTP source pages', () => {
-  const images = parseResults({ images_results: [item, item, { ...item, original: 'http://another-site.org/cat.jpg', link: 'http://another-site.org/cat' }, { ...item, original: 'https://bad.org/x.jpg', thumbnail: 'javascript:alert(1)' }] });
-  assert.equal(images.length, 2); assert.equal(images[0].page, item.link); assert.equal(images[1].page, 'http://another-site.org/cat');
+test('SearXNG image results retain original sites and accept HTTP source pages', () => {
+  const images = parseResults({ results: [item, item, { ...item, img_src: 'http://another-site.org/cat.jpg', url: 'http://another-site.org/cat' }, { ...item, img_src: 'https://bad.org/x.jpg', thumbnail_src: 'javascript:alert(1)' }, { ...item, category: 'general', img_src: 'https://non-image.org/cat' }] });
+  assert.equal(images.length, 2); assert.equal(images[0].page, item.url); assert.equal(images[1].page, 'http://another-site.org/cat');
   assert.equal(images[0].source, 'Any site');
 });
-test('provider key stays on the server and does not appear in returned data', async () => {
+test('search works without API keys and only sends an image-search query', async () => {
   let requested;
-  const result = await webImageSearch(input, { apiKey: 'test-secret-key', fetcher: async url => { requested = new URL(url); return { ok: true, json: async () => ({ images_results: [item], search_parameters: { api_key: 'test-secret-key' } }) }; } });
-  assert.equal(requested.hostname, 'serpapi.com'); assert.equal(requested.searchParams.get('engine'), 'google_images'); assert.equal(requested.searchParams.get('q'), 'cats');
-  assert.equal(requested.searchParams.get('api_key'), 'test-secret-key'); assert.equal(result.status, 200);
-  assert.ok(!JSON.stringify(result.body).includes('test-secret-key'));
+  const result = await webImageSearch(input, { searchUrl: 'https://search.example.org', fetcher: async url => { requested = new URL(url); return { ok: true, json: async () => ({ results: [item], unrelated_private_field: 'not-returned' }) }; } });
+  assert.equal(requested.hostname, 'search.example.org'); assert.equal(requested.pathname, '/search');
+  assert.equal(requested.searchParams.get('categories'), 'images'); assert.equal(requested.searchParams.get('q'), 'cats');
+  assert.equal(requested.searchParams.has('api_key'), false); assert.equal(result.status, 200);
+  assert.ok(!JSON.stringify(result.body).includes('not-returned'));
 });
-test('missing credentials do not trigger a provider request', async () => {
-  let requested = false;
-  const result = await webImageSearch(input, { fetcher: async () => { requested = true; } });
-  assert.equal(result.status, 503); assert.equal(requested, false);
+test('an unavailable engine does not discard results from the working engines', async () => {
+  const result = await webImageSearch(input, { fetcher: async () => ({ ok: true, json: async () => ({ results: [item], unresponsive_engines: [['duckduckgo images', 'access denied']] }) }) });
+  assert.equal(result.status, 200); assert.equal(result.body.images.length, 1);
 });
-test('provider errors, including reflected secrets, are never exposed', async () => {
-  const result = await webImageSearch(input, { apiKey: 'test-secret-key', fetcher: async () => ({ ok: true, json: async () => ({ error: 'Invalid test-secret-key' }) }) });
-  assert.equal(result.status, 502); assert.ok(!JSON.stringify(result).includes('test-secret-key'));
-  const limited = await webImageSearch(input, { apiKey: 'test', fetcher: async () => ({ ok: false, status: 429 }) }); assert.equal(limited.status, 429);
+test('empty searches and unavailable engines are reported separately', async () => {
+  const empty = await webImageSearch(input, { fetcher: async () => ({ ok: true, json: async () => ({ results: [] }) }) }); assert.equal(empty.status, 200);
+  const unavailable = await webImageSearch(input, { fetcher: async () => ({ ok: true, json: async () => ({ results: [], unresponsive_engines: [['bing images', 'blocked']] }) }) }); assert.equal(unavailable.status, 503);
+  const limited = await webImageSearch(input, { fetcher: async () => ({ ok: false, status: 429 }) }); assert.equal(limited.status, 429);
 });
-test('network failures and malformed provider data return server errors', async () => {
-  const network = await webImageSearch(input, { apiKey: 'test', fetcher: async () => { throw new Error(); } }); assert.equal(network.status, 504);
-  const malformed = await webImageSearch(input, { apiKey: 'test', fetcher: async () => ({ ok: true, json: async () => { throw new Error(); } }) }); assert.equal(malformed.status, 502);
+test('network failures and malformed provider data return recoverable server errors', async () => {
+  const network = await webImageSearch(input, { fetcher: async () => { throw new Error(); } }); assert.equal(network.status, 504);
+  const malformed = await webImageSearch(input, { fetcher: async () => ({ ok: true, json: async () => null }) }); assert.equal(malformed.status, 502);
 });
-test('worker validates input and limits browser access to the configured origin', async () => {
+test('search handler validates input and limits browser access to the configured origin', async () => {
   const env = { ALLOWED_ORIGIN: 'https://mrmayo1980.github.io' };
   const rejected = await worker.fetch(new Request('https://api.example.com/api/images?tag=cats&count=5', { headers: { Origin: 'https://unrelated.example' } }), env); assert.equal(rejected.status, 403);
   const invalid = await worker.fetch(new Request('https://api.example.com/api/images?tag=cats&count=500'), env); assert.equal(invalid.status, 400);
-  const unconfigured = await worker.fetch(new Request('https://api.example.com/api/images?tag=cats&count=5', { headers: { Origin: env.ALLOWED_ORIGIN } }), env); assert.equal(unconfigured.status, 503); assert.equal(unconfigured.headers.get('Access-Control-Allow-Origin'), env.ALLOWED_ORIGIN);
-  const preflight = await worker.fetch(new Request('https://api.example.com/api/images', { method: 'OPTIONS', headers: { Origin: env.ALLOWED_ORIGIN } }), env); assert.equal(preflight.status, 204);
+  const preflight = await worker.fetch(new Request('https://api.example.com/api/images', { method: 'OPTIONS', headers: { Origin: env.ALLOWED_ORIGIN } }), env); assert.equal(preflight.status, 204); assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), env.ALLOWED_ORIGIN);
   const method = await worker.fetch(new Request('https://api.example.com/api/images', { method: 'POST' }), env); assert.equal(method.status, 405);
 });

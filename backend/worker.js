@@ -12,7 +12,7 @@ export default {
     if (request.method !== 'GET') return new Response(JSON.stringify({ error: 'Method not allowed.' }), { status: 405, headers });
     if (url.pathname !== '/api/images') return new Response(JSON.stringify({ error: 'Not found.' }), { status: 404, headers });
     try {
-      const result = await webImageSearch({ tag: url.searchParams.get('tag'), count: url.searchParams.get('count'), website: url.searchParams.get('website') || '' }, { apiKey: env.SERPAPI_API_KEY });
+      const result = await webImageSearch({ tag: url.searchParams.get('tag'), count: url.searchParams.get('count'), website: url.searchParams.get('website') || '' }, { searchUrl: env.SEARXNG_URL || 'http://127.0.0.1:4388', signal: request.signal });
       return new Response(JSON.stringify(result.body), { status: result.status, headers });
     } catch {
       return new Response(JSON.stringify({ error: 'Enter a search and choose between 2 and 50 images.' }), { status: 400, headers });
