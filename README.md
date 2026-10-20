@@ -10,9 +10,9 @@ The small Node API returns image URLs and source pages, caches successful search
 
 ## Public trial
 
-Working trial: <https://interact-earth-picking-agricultural.trycloudflare.com/>
+Working trial: <https://volvo-teach-village-bennett.trycloudflare.com/>
 
-The frontend is configured for GitHub Pages. `config.json` points to a Cloudflare Quick Tunnel connected to the search service on the owner's computer. The same tunnel also serves a working copy of the frontend while the GitHub Pages update is delayed. GitHub reported an Actions/Pages incident during publication on 19 October 2026.
+The frontend is configured for GitHub Pages. `config.json` points to a Cloudflare Quick Tunnel connected to the search service on the owner's computer. The same tunnel also serves a copy of the frontend. The restart helper checks the public health response before reusing a tunnel and replaces expired connections. After a replacement, publish the updated configuration to GitHub Pages.
 
 **This is a working trial, not always-on hosting. Search is available only while the owner's computer, SearXNG container, Node API and tunnel are running.** Cloudflare Quick Tunnels have no uptime guarantee. Restarting the tunnel can change its URL; republish the updated `config.json` afterward. For permanent availability, move the same search services to an always-on host and use a stable HTTPS endpoint.
 

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
+import { tunnelOrigin, tunnelReady } from './tunnel-health.js';
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const state = join(root, '.local');
 mkdirSync(state, { recursive: true, mode: 0o700 });
@@ -48,8 +49,24 @@ if (!running('search-api', join(root, 'backend/server.mjs'))) launch('search-api
 await waitFor(async () => (await fetch('http://127.0.0.1:4389/health', { signal: AbortSignal.timeout(1500) })).status === 200);
 const localBinary = join(homedir(), '.local/bin/tagspin-cloudflared');
 const tunnel = process.env.CLOUDFLARED_BIN || (existsSync(localBinary) ? localBinary : 'cloudflared');
-if (!running('search-tunnel', '127.0.0.1:4389')) launch('search-tunnel', tunnel, ['tunnel', '--url', 'http://127.0.0.1:4389', '--no-autoupdate', '--protocol', 'http2']);
-const publicOrigin = await waitFor(() => readFileSync(join(state, 'search-tunnel.log'), 'utf8').match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/)?.[0]);
+let publicOrigin;
+if (running('search-tunnel', 'cloudflared') && running('search-tunnel', '127.0.0.1:4389')) {
+  publicOrigin = tunnelOrigin(readFileSync(join(state, 'search-tunnel.log'), 'utf8'));
+  if (!await tunnelReady(publicOrigin)) {
+    console.log('The previous public connection expired; replacing it.');
+    const pid = Number(readFileSync(join(state, 'search-tunnel.pid'), 'utf8'));
+    process.kill(pid, 'SIGTERM');
+    await waitFor(() => !running('search-tunnel', '127.0.0.1:4389'), 35);
+    publicOrigin = undefined;
+  }
+}
+if (!publicOrigin) {
+  launch('search-tunnel', tunnel, ['tunnel', '--url', 'http://127.0.0.1:4389', '--no-autoupdate', '--protocol', 'http2']);
+  publicOrigin = await waitFor(async () => {
+    const origin = tunnelOrigin(readFileSync(join(state, 'search-tunnel.log'), 'utf8'));
+    return await tunnelReady(origin) ? origin : undefined;
+  }, 180);
+}
 writeFileSync(join(root, 'config.json'), JSON.stringify({ searchEndpoint: `${publicOrigin}/api/images` }, null, 2) + '\n');
 console.log(`No-key search is running: ${publicOrigin}/api/images`);
 console.log('The trial works while this computer, container, API, and tunnel stay running.');

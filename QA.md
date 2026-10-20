@@ -1,10 +1,10 @@
 # Verification — no-key web search
 
-Checked on 19 October 2026.
+Checked on 20 October 2026.
 
 ## Automated
 
-18 passing tests cover input validation, safe image/source URLs, optional domain filtering, unique result pools, count limits, existing history compatibility, no-key SearXNG requests, image-result parsing, partial engine failures, empty results, network/rate-limit errors, malformed responses, and API origin/method handling. Application, backend, and lifecycle scripts pass syntax checks.
+20 passing tests cover input validation, safe image/source URLs, optional domain filtering, unique result pools, count limits, existing history compatibility, no-key SearXNG requests, image-result parsing, partial engine failures, empty results, network/rate-limit errors, malformed responses, and API origin/method handling. Application, backend, and lifecycle scripts pass syntax checks.
 
 ## Live checks
 
@@ -19,7 +19,7 @@ Checked on 19 October 2026.
 
 ## Publication
 
-The tested revision is pushed to GitHub. An official GitHub Actions/Pages incident delayed deployment; the same public tunnel serves a working trial of the complete frontend and API. The public trial completed a live `cats` roulette with 5 images, saved the winner, and retained it after a page reload. Only explicitly approved frontend assets are served; `.env`, backend source and package metadata return HTTP 404. GitHub Pages publication must be rechecked after the incident.
+GitHub Pages serves the simplified frontend. On 20 October, the previous Quick Tunnel expired while the client process remained alive, causing the published search endpoint to stop resolving. The local search engine and API remained healthy. A replacement public connection passed its health check and completed a live `cats` roulette with five images and saved history. The lifecycle helper now verifies the public health response before reusing a running tunnel, replaces expired connections, and waits for the new connection before changing `config.json`. Regression tests cover expired DNS, provider error pages, invalid health responses, and successful reuse. Running the helper again reused the healthy replacement address.
 
 ## Availability
 
