@@ -26,6 +26,24 @@ test('an unavailable engine does not discard results from the working engines', 
   const result = await webImageSearch(input, { fetcher: async () => ({ ok: true, json: async () => ({ results: [item], unresponsive_engines: [['duckduckgo images', 'access denied']] }) }) });
   assert.equal(result.status, 200); assert.equal(result.body.images.length, 1);
 });
+test('backend removes off-topic results before returning a pool and preserves rank', async () => {
+  const results = [
+    { ...item, title: 'Sports car', img_src: 'https://any-site.org/car.jpg' },
+    { ...item, title: 'Red panda', img_src: 'https://any-site.org/first.jpg' },
+    { ...item, title: 'Giant panda', img_src: 'https://any-site.org/panda.jpg' },
+    { ...item, title: 'A red panda on a branch', img_src: 'https://any-site.org/second.jpg' },
+  ];
+  const result = await webImageSearch({ ...input, tag: 'red panda' }, { fetcher: async () => ({ ok: true, json: async () => ({ results }) }) });
+  assert.deepEqual(result.body.images.map(image => image.url), ['https://any-site.org/first.jpg', 'https://any-site.org/second.jpg']);
+});
+test('backend enforces website restriction even when an engine ignores site syntax', async () => {
+  const images = parseResults({ results: [item, { ...item, url: 'https://example.com/cat', img_src: 'https://cdn.example.com/cat.jpg' }] }, { ...input, website: 'example.com' });
+  assert.equal(images.length, 1); assert.equal(new URL(images[0].page).hostname, 'example.com');
+});
+test('off-topic results do not become a fake pool when one engine fails', async () => {
+  const result = await webImageSearch({ ...input, tag: 'red panda' }, { fetcher: async () => ({ ok: true, json: async () => ({ results: [item], unresponsive_engines: [['duckduckgo images', 'blocked']] }) }) });
+  assert.equal(result.status, 200); assert.deepEqual(result.body.images, []);
+});
 test('empty searches and unavailable engines are reported separately', async () => {
   const empty = await webImageSearch(input, { fetcher: async () => ({ ok: true, json: async () => ({ results: [] }) }) }); assert.equal(empty.status, 200);
   const unavailable = await webImageSearch(input, { fetcher: async () => ({ ok: true, json: async () => ({ results: [], unresponsive_engines: [['bing images', 'blocked']] }) }) }); assert.equal(unavailable.status, 503);

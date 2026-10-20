@@ -1,4 +1,4 @@
-import { HISTORY_KEY, HISTORY_LIMIT, readHistory, saveHistory, validateSettings, searchImages, randomIndex } from './core.js?v=2.1.1';
+import { HISTORY_KEY, HISTORY_LIMIT, readHistory, saveHistory, validateSettings, searchImages, randomIndex } from './core.js?v=2.2.0';
 
 const $ = selector => document.querySelector(selector);
 const state = { pool: [], settings: null, history: [], busy: false, endpoint: '' };
@@ -6,7 +6,14 @@ try { state.history = readHistory(localStorage); } catch { /* History stays in m
 const configured = fetch('./config.json', { cache: 'no-store' }).then(response => { if (!response.ok) throw new Error(); return response.json(); }).then(config => { state.endpoint = config.searchEndpoint; }).catch(() => {});
 
 function status(message, error = false) { $('#status').textContent = message; $('#status').classList.toggle('error', error); }
-function setBusy(value) { state.busy = value; $('#search-fields').disabled = value; $('#spin-again').disabled = value; $('#result').setAttribute('aria-busy', String(value)); $('#spin-button').textContent = value ? '…' : 'Spin'; }
+function setBusy(value) { state.busy = value; $('#search-fields').disabled = value; $('#spin-again').disabled = value || !state.pool.length; $('#result').setAttribute('aria-busy', String(value)); $('#spin-button').textContent = value ? '…' : 'Spin'; }
+function clearPool() {
+  state.pool = []; state.settings = null;
+  $('#result-image').hidden = true; $('#result-image').removeAttribute('src');
+  $('#result-info').hidden = true; $('#empty-result').hidden = false;
+  $('#spin-again').disabled = true;
+}
+$('#search-fields').addEventListener('input', () => { clearPool(); status('Images from across the web.'); });
 function node(tag, className, text) { const result = document.createElement(tag); if (className) result.className = className; if (text !== undefined) result.textContent = text; return result; }
 function renderHistory() {
   $('#history-count').textContent = state.history.length; $('#history-total').textContent = state.history.length;
@@ -50,7 +57,7 @@ $('#spin-form').addEventListener('submit', async event => {
   event.preventDefault(); if (state.busy) return;
   let settings;
   try { settings = validateSettings(Object.fromEntries(new FormData(event.currentTarget))); } catch (error) { status(error.message, true); return; }
-  setBusy(true); status('Searching…');
+  clearPool(); setBusy(true); status('Searching…');
   try {
     await configured;
     const found = await searchImages(settings, { endpoint: state.endpoint });

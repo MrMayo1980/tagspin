@@ -6,7 +6,7 @@ A minimal image roulette: search phrase, image count, optional website, Spin, an
 
 A self-hosted SearXNG instance gathers general image results from Bing Images, Brave Images, and DuckDuckGo Images when each engine is available. There are no direct Wikimedia, NASA, Flickr, or other catalog adapters. Results can come from any website indexed by the working search engines. An optional website adds a `site:example.com` query and client-side domain matching.
 
-The small Node API returns image URLs and source pages, caches successful searches for five minutes, and limits repeated requests. The public tunnel exposes only the search API and an explicit list of public frontend assets. It does not expose backend source files, private configuration, or the SearXNG administration interface. Image usage rights remain with the original creators.
+The small Node API returns image URLs and source pages, caches successful searches for five minutes, and limits repeated requests. Results must match every meaningful search word in their caption; generic captions need evidence in the image or source path. The roulette uses the highest-ranked matching results up to the requested count. It reports a smaller pool when necessary, and editing the search clears the previous pool. Matching uses search metadata, so it cannot guarantee the visual contents of every indexed image. The public tunnel exposes only the search API and an explicit list of public frontend assets. It does not expose backend source files, private configuration, or the SearXNG administration interface. Image usage rights remain with the original creators.
 
 ## Public trial
 

@@ -32,6 +32,36 @@ export function plainText(value = '') {
   return String(value).replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
 }
 
+function words(value) {
+  return plainText(value).normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+}
+
+function singular(word) {
+  if (/^[a-z]+ies$/.test(word) && word.length > 4) return word.slice(0, -3) + 'y';
+  if (/(?:ches|shes|xes|zes)$/.test(word)) return word.slice(0, -2);
+  if (/^[a-z]+s$/.test(word) && word.length > 3 && !/(?:ss|us|is|news)$/.test(word)) return word.slice(0, -1);
+  return word;
+}
+
+function pathWords(value) {
+  try { return decodeURIComponent(new URL(value).pathname); } catch { return ''; }
+}
+
+export function matchesSearch(image, tag) {
+  const ignored = new Set(['a', 'an', 'the', 'of', 'in', 'on', 'with', 'and', 'for', 'to', 'at', 'by', 'from']);
+  const queryWords = words(tag), keywords = queryWords.filter(word => !ignored.has(word));
+  const terms = (keywords.length ? keywords : queryWords).map(singular);
+  if (!terms.length) return false;
+  const covers = value => {
+    const tokens = words(value).map(singular);
+    return terms.every(term => tokens.includes(term) || (/[^\p{Script=Latin}\p{N}]/u.test(term) && tokens.some(token => token.includes(term))));
+  };
+  // Domains and URL query parameters can repeat the search without describing the image.
+  if (covers(image.title)) return true;
+  const genericTitle = /^(?:(?:comment|stock) )?(?:image|photo|picture)s?$|^untitled(?: discovery)?$/i.test(image.title.trim());
+  return genericTitle && (covers(pathWords(image.url)) || covers(pathWords(image.page)));
+}
+
 export function normalizeImage(image) {
   if (!image || typeof image !== 'object') return null;
   const thumbnail = safeUrl(image.thumbnail, { httpsOnly: true }), page = safeUrl(image.page);
@@ -92,9 +122,9 @@ export async function searchImages(input, { endpoint, ...options } = {}) {
   const params = new URLSearchParams({ tag: settings.tag, count: String(settings.count), website: settings.website });
   const data = await fetchJson(`${endpoint}?${params}`, { timeout: 35000, ...options });
   if (!data || !Array.isArray(data.images)) throw new Error('Search returned an unreadable result. Please try again.');
-  const images = data.images.map(normalizeImage).filter(Boolean).filter(image => !settings.website || domainMatches(image.page, settings.website) || domainMatches(image.url, settings.website));
+  const images = data.images.map(normalizeImage).filter(Boolean).filter(image => matchesSearch(image, settings.tag)).filter(image => !settings.website || domainMatches(image.page, settings.website) || domainMatches(image.url, settings.website));
   const unique = [...new Map(images.map(image => [image.url, image])).values()];
-  for (let index = unique.length - 1; index > 0; index--) { const other = randomIndex(index + 1); [unique[index], unique[other]] = [unique[other], unique[index]]; }
+  // Search engines rank relevance. Randomness belongs to the spin, after choosing this pool.
   if (unique.length < 2) throw new Error(`Not enough images found for “${settings.tag}”. Try another search or leave the website blank.`);
   return unique.slice(0, settings.count);
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeWebsite, domainMatches, validateSettings, safeUrl, readHistory, saveHistory, HISTORY_KEY, HISTORY_LIMIT, searchImages, fetchJson } from '../core.js';
+import { normalizeWebsite, domainMatches, validateSettings, safeUrl, readHistory, saveHistory, HISTORY_KEY, HISTORY_LIMIT, searchImages, fetchJson, matchesSearch } from '../core.js';
 
 const settings = { tag: 'cats', count: 3, kind: 'all', website: '' };
 const photo = { id: '1', title: 'Cat', thumbnail: 'https://example.org/cat.jpg', url: 'https://example.org/cat.jpg', page: 'https://example.org/cat', creator: 'A creator', license: 'CC BY 4.0', source: 'Example' };
@@ -49,6 +49,28 @@ test('search uses one general search endpoint and respects the requested pool si
   assert.equal(called.hostname, 'search.example.com'); assert.equal(called.searchParams.get('tag'), 'cats');
   assert.equal(called.searchParams.get('website'), ''); assert.equal(found.length, 3);
   assert.equal(new Set(found.map(image => image.page)).size, 3);
+  assert.deepEqual(found.map(image => image.id), ['0', '1', '2']);
+});
+test('topic matching requires every meaningful word, not substrings or just a domain', () => {
+  assert.ok(matchesSearch(photo, 'cats'));
+  assert.ok(matchesSearch({ ...photo, title: 'A BLACK cat in the garden' }, 'black cats'));
+  assert.ok(!matchesSearch(photo, 'black cats'));
+  assert.ok(!matchesSearch({ ...photo, title: 'Cathedral', url: 'https://cats.example/cathedral.jpg', page: 'https://cats.example/?q=cats' }, 'cat'));
+  assert.ok(!matchesSearch({ ...photo, title: 'Giant panda', url: 'https://example.org/panda.jpg', page: 'https://example.org/search/red-panda' }, 'red panda'));
+});
+test('generic gallery captions need topic evidence while unrelated captions are excluded', () => {
+  assert.ok(matchesSearch({ ...photo, title: 'Photo', url: 'https://example.org/red_panda.jpg' }, 'red panda'));
+  assert.ok(!matchesSearch({ ...photo, title: 'Foresting facts', url: 'https://example.org/red_panda.jpg' }, 'red panda'));
+  assert.ok(matchesSearch({ ...photo, title: 'Comment Image', url: 'https://example.org/123.jpg', page: 'https://example.org/photos/black-cats' }, 'black cats'));
+  assert.ok(matchesSearch({ ...photo, title: 'Café in Paris' }, 'cafe in paris'));
+  assert.ok(matchesSearch({ ...photo, title: '美しい黒猫の写真' }, '黒猫'));
+});
+test('a small requested pool keeps top matches and excludes unrelated provider results', async () => {
+  const unrelated = { ...photo, title: 'Orange sports car', url: 'https://example.org/car.jpg', page: 'https://example.org/car' };
+  const images = [unrelated, ...Array.from({ length: 30 }, (_, index) => ({ ...photo, id: String(index), title: 'Black cat', url: `https://example.org/black-cat-${index}.jpg` }))];
+  const found = await searchImages({ ...settings, tag: 'black cats' }, { endpoint: './api/images', fetcher: async () => response({ images }) });
+  assert.deepEqual(found.map(image => image.id), ['0', '1', '2']);
+  await assert.rejects(searchImages({ ...settings, tag: 'red panda' }, { endpoint: './api/images', fetcher: async () => response({ images }) }), /Not enough images/);
 });
 test('optional websites filter general results by actual page or image domain', async () => {
   const images = [photo, { ...photo, id: '2', url: 'https://cdn.example.org/b.jpg', page: 'https://www.example.org/b' }, { ...photo, id: 'bad', url: 'https://example.org.evil.com/a.jpg', page: 'https://evil.com/a' }];

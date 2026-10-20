@@ -1,14 +1,15 @@
-import { validateSettings, normalizeImage } from '../core.js';
+import { validateSettings, normalizeImage, matchesSearch, domainMatches } from '../core.js';
 
 export function buildQuery(settings) {
   return settings.tag + (settings.website ? ` site:${settings.website}` : '');
 }
 
-export function parseResults(data) {
+export function parseResults(data, settings) {
   const images = (data.results || []).flatMap(item => {
     if (item.category && item.category !== 'images') return [];
     const image = normalizeImage({ id: item.img_src, title: item.title, thumbnail: item.thumbnail_src || item.img_src, url: item.img_src, page: item.url, source: item.source || item.engine, license: 'Check the original source for usage rights.' });
-    return image ? [image] : [];
+    if (!image || (settings && (!matchesSearch(image, settings.tag) || (settings.website && !domainMatches(image.page, settings.website) && !domainMatches(image.url, settings.website))))) return [];
+    return [image];
   });
   return [...new Map(images.map(image => [image.url, image])).values()].slice(0, 100);
 }
@@ -26,7 +27,7 @@ export async function webImageSearch(input, { searchUrl = 'http://127.0.0.1:4388
   let data;
   try { data = await response.json(); } catch { return { status: 502, body: { error: 'Search returned an unreadable response.' } }; }
   if (!data || !Array.isArray(data.results)) return { status: 502, body: { error: 'Search returned an unreadable response.' } };
-  const images = parseResults(data);
-  if (!images.length && data.unresponsive_engines?.length) return { status: 503, body: { error: 'Search engines are temporarily unavailable. Please try again later.' } };
+  const images = parseResults(data, settings);
+  if (!data.results.length && data.unresponsive_engines?.length) return { status: 503, body: { error: 'Search engines are temporarily unavailable. Please try again later.' } };
   return { status: 200, body: { images } };
 }
